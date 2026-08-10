@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bike Helmet Detection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+        
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #fafafa;
+        }
+        
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f0f0ff;
+        }
+        
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #e8ecff;
+        }
+        
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        
+        .upload-text {
+            color: #666;
+            font-size: 16px;
+        }
+        
+        .upload-hint {
+            color: #999;
+            font-size: 14px;
+            margin-top: 8px;
+        }
+        
+        #fileInput {
+            display: none;
+        }
+        
+        .preview-container {
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .preview-container.show {
+            display: block;
+        }
+        
+        .preview-image {
+            width: 100%;
+            max-height: 300px;
+            object-fit: contain;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .result-container {
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .result-container.show {
+            display: block;
+        }
+        
+        .result-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .result-label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .result-class {
+            font-size: 32px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .result-class.with_helmet {
+            color: #28a745;
+        }
+        
+        .result-class.without_helmet {
+            color: #dc3545;
+        }
+        
+        .confidence-bar {
+            background: #e9ecef;
+            border-radius: 8px;
+            height: 12px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        
+        .confidence-fill {
+            height: 100%;
+            border-radius: 8px;
+            transition: width 0.8s ease;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+        
+        .confidence-text {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
+        }
+        
+        .error-message.show {
+            display: block;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .loading.show {
+            display: block;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .button-reset {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: background 0.3s;
+        }
+        
+        .button-reset:hover {
+            background: #5a6268;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🪖 Bike Helmet Detection</h1>
+        <p class="subtitle">Upload an image to check if the person is wearing a helmet</p>
+        
+        <!-- Upload Area -->
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📸</div>
+            <div class="upload-text">Click or drag & drop an image</div>
+            <div class="upload-hint">Supports JPG, PNG, BMP, WEBP</div>
+            <input type="file" id="fileInput" accept="image/*">
+        </div>
+        
+        <!-- Loading -->
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 10px; color: #666;">Analyzing image...</p>
+        </div>
+        
+        <!-- Preview -->
+        <div class="preview-container" id="previewContainer">
+            <img class="preview-image" id="previewImage" alt="Preview">
+        </div>
+        
+        <!-- Result -->
+        <div class="result-container" id="resultContainer">
+            <div class="result-card">
+                <div class="result-label">Prediction</div>
+                <div class="result-class" id="resultClass">—</div>
+                <div class="confidence-bar">
+                    <div class="confidence-fill" id="confidenceFill" style="width: 0%"></div>
+                </div>
+                <div class="confidence-text" id="confidenceText">Confidence: 0%</div>
+                <button class="button-reset" onclick="resetApp()">🔄 Test Another Image</button>
+            </div>
+        </div>
+        
+        <!-- Error -->
+        <div class="error-message" id="errorMessage"></div>
+    </div>
+    
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const previewContainer = document.getElementById('previewContainer');
+        const previewImage = document.getElementById('previewImage');
+        const resultContainer = document.getElementById('resultContainer');
+        const resultClass = document.getElementById('resultClass');
+        const confidenceFill = document.getElementById('confidenceFill');
+        const confidenceText = document.getElementById('confidenceText');
+        const loading = document.getElementById('loading');
+        const errorMessage = document.getElementById('errorMessage');
+        
+        // Click to upload
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+        
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+        
+        // File selection
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+        
+        function handleFile(file) {
+            // Check file type
+            const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/bmp', 'image/webp'];
+            if (!validTypes.includes(file.type)) {
+                showError('Please upload a valid image file (JPG, PNG, BMP, WEBP)');
+                return;
+            }
+            
+            // Preview image
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImage.src = e.target.result;
+                previewContainer.classList.add('show');
+            };
+            reader.readAsDataURL(file);
+            
+            // Hide previous results
+            resultContainer.classList.remove('show');
+            errorMessage.classList.remove('show');
+            
+            // Show loading
+            loading.classList.add('show');
+            
+            // Send to server
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            fetch('/predict', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                loading.classList.remove('show');
+                
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+                
+                if (data.success) {
+                    displayResult(data);
+                } else {
+                    showError('Unknown error occurred');
+                }
+            })
+            .catch(error => {
+                loading.classList.remove('show');
+                showError('Error connecting to server. Make sure the Flask app is running.');
+                console.error('Error:', error);
+            });
+        }
+        
+        function displayResult(data) {
+            resultClass.textContent = data.prediction.replace('_', ' ');
+            resultClass.className = 'result-class ' + data.prediction;
+            
+            const confidence = data.confidence * 100;
+            confidenceFill.style.width = confidence + '%';
+            confidenceText.textContent = `Confidence: ${confidence.toFixed(1)}%`;
+            
+            resultContainer.classList.add('show');
+        }
+        
+        function showError(message) {
+            errorMessage.textContent = '❌ ' + message;
+            errorMessage.classList.add('show');
+        }
+        
+        function resetApp() {
+            resultContainer.classList.remove('show');
+            errorMessage.classList.remove('show');
+            previewContainer.classList.remove('show');
+            fileInput.value = '';
+            loading.classList.remove('show');
+            confidenceFill.style.width = '0%';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
